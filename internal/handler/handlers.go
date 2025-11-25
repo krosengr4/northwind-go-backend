@@ -62,11 +62,11 @@ func (h *Handler) GetCategories(w http.ResponseWriter, r *http.Request) {
 
 // Handler to get category by its ID
 func (h *Handler) GetCategoryById(w http.ResponseWriter, r *http.Request) {
-	log.Info().Msg("GET /api/categories/{ID} - Getting category by ID")
-
 	// Extract the ID from the URL path
 	vars := mux.Vars(r)
 	idStr := vars["categoryId"]
+
+	log.Info().Str("category_id", idStr).Msg("GET /api/categories/{ID} - Getting category by ID")
 
 	// Convert string to an int
 	id, err := strconv.Atoi(idStr)
@@ -103,7 +103,7 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 
 	// Decode the json and put into struct
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error().Err(err).Msg("Invalid JSON in create application request")
+		log.Error().Err(err).Msg("Invalid JSON in create category request")
 		writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
 		return
 	}
@@ -113,12 +113,14 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		Str("description", req.Description).
 		Msg("Creating category with data")
 
+		// If name or description is empty, write error
 	if req.Name == "" || req.Description == "" {
 		log.Warn().Str("name", req.Name).Str("description", req.Description).Msg("Missing required fields")
-		writeErrorResponse(w, http.StatusBadRequest, "name and description are required")
+		writeErrorResponse(w, http.StatusBadRequest, "category_name and description are required")
 		return
 	}
 
+	// Create new category in the database
 	catId, err := h.db.CreateNewCategory(req.Name, req.Description)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
@@ -140,6 +142,61 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"id":      catId,
 		"message": "Category created successfully",
+	}
+
+	writeJSONResponse(w, http.StatusOK, response)
+}
+
+// Handler func to update a category
+func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+	// Extract the ID from the URL path
+	vars := mux.Vars(r)
+	idStr := vars["categoryId"]
+
+	log.Info().Str("category_id", idStr).Msg("PUT /api/categories/{ID} - Updating category")
+
+	var req struct {
+		Name        string `json:"category_name"`
+		Description string `json:"description"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Error().Err(err).Str("category_id", idStr).Msg("Invalid JSON in update category request")
+		writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
+		return
+	}
+
+	log.Info().
+		Str("category_id", idStr).
+		Str("Name", req.Name).
+		Str("Description", req.Description).
+		Msg("Updating category with new data")
+
+	// Convert the ID to an int
+	// id, err := strconv.Atoi(idStr)
+	// if err != nil {
+	// 	log.Warn().Str("id", idStr).Msg("Invalid category ID format")
+	// 	writeErrorResponse(w, http.StatusInternalServerError, "Invalid category ID")
+	// 	return
+	// }
+
+	// Update category in the db
+	err := h.db.UpdateCategory(idStr, req.Name, req.Description)
+	if err != nil {
+		if err.Error() == "category not found" {
+			log.Warn().Str("cat_id", idStr).Msg("Category not found for an update")
+			writeErrorResponse(w, http.StatusInternalServerError, "Category not found")
+			return
+		}
+		log.Error().Err(err).Str("cat_id", idStr).Msg("Error updating the category")
+		writeErrorResponse(w, http.StatusInternalServerError, "Failed to update the category")
+		return
+	}
+
+	log.Info().Str("category_id", idStr).Str("name", req.Name).Msg("Successfully updated the category")
+
+	response := map[string]interface{}{
+		"message": "Category was updated successfully",
 	}
 
 	writeJSONResponse(w, http.StatusOK, response)

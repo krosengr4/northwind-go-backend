@@ -87,6 +87,7 @@ func setupRouter(h *handler.Handler) *mux.Router {
 	api.HandleFunc("/categories", h.GetCategories).Methods("GET")
 	api.HandleFunc("/categories/{categoryId}", h.GetCategoryById).Methods("GET")
 	api.HandleFunc("/categories", h.CreateCategory).Methods("POST")
+	api.HandleFunc("/categories/{categoryId}", h.UpdateCategory).Methods("PUT")
 
 	return router
 }

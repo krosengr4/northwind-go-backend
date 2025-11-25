@@ -101,15 +101,52 @@ func (db *DB) CreateNewCategory(name, description string) (int, error) {
 
 	_, err := db.Exec(query, name, description)
 	if err != nil {
-		return "", fmt.Errorf("failed to create application: %w", err)
+		return 0, fmt.Errorf("failed to create category: %w", err)
 	}
 
 	category, err := db.GetCategoryByName(name)
 	if err != nil {
-		return nil, fmt.Errorf("Failure to get category after created: %w", err)
+		return 0, fmt.Errorf("failure to get category after created: %w", err)
 	}
 
 	return category.CategoryId, nil
+}
+
+// PUT /api/categories/{cat_id}
+func (db *DB) UpdateCategory(id, name, description string) error {
+	log.Info().
+		Str("id", id).
+		Str("name", name).
+		Str("description", description).
+		Msg("Updating category in database")
+
+	query := `
+		UPDATE categories
+		SET category_name = $2, description = $3
+		WHERE category_id = $1
+	`
+
+	result, err := db.Exec(query, id, name, description)
+	if err != nil {
+		log.Error().Err(err).Str("category_id", id).Msg("Failed to execute update query")
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Error().Err(err).Str("category_id", id).Msg("Failed to get rows affected")
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	log.Info().Str("category_id", id).Int64("rows_affected", rowsAffected).Msg("Update query was executed")
+
+	if rowsAffected == 0 {
+		log.Warn().Str("category_id", id).Msg("No rows affected - category not found")
+		return fmt.Errorf("category not found")
+	}
+
+	log.Info().Str("category_id", id).Msg("Successfully updated the category in database")
+	return nil
 }
 
 // #endregion
