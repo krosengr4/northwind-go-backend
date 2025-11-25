@@ -1,8 +1,13 @@
 package main
 
 import (
+	"net/http"
+	appconfig "northwind-api/internal/config"
 	"northwind-api/internal/handler"
+	"northwind-api/internal/middleware"
+	database "northwind-api/internal/repository"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
@@ -21,6 +26,53 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	log.Info().Msg("Starting Northwind Backend Service")
+
+	// Load configurations
+	cfg, err := appconfig.Load()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to laod configuration")
+	}
+
+	// Initialize database
+	db, err := database.New(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize the database")
+	}
+	defer db.Close()
+
+	// Start cleanup job in the background
+	// ctx := context.Background()
+
+	// Initialize handlers
+	handler := handler.New(db, cfg)
+
+	// Set up router with middlewear
+	router := setupRouter(handler)
+
+	// Initialize CORS middlewear with configuration
+	corsConfig := middleware.CORSConfig{
+		AllowedOrigins: cfg.GetAllowedOrigins(),
+	}
+
+	// Apply middlewear chain: Recover -> Logging -> CORS -> Router
+	httpHandler := middleware.Recovery(
+		middleware.Logging(
+			middleware.CORS(corsConfig)(router),
+		),
+	)
+
+	// Start server
+	log.Info().Str("port", cfg.PostgresPort).Msg("Northwind Service starting")
+
+	server := &http.Server{
+		Addr:         ":" + cfg.PostgresPort,
+		Handler:      httpHandler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	log.Fatal().Err(server.ListenAndServe()).Msg("Server failed to start")
 
 }
 
