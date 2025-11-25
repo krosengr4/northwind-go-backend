@@ -86,7 +86,25 @@ func (c *Config) Validate() error {
 
 // Constructs the database URL from individual components (No Fallbacks)
 func (c *Config) GetDatabaseURL() (string, error) {
+	// Always construct the URL from individual components
+	password, err := c.GetDatabasePassword()
+	if err != nil {
+		return "", fmt.Errorf("failed to get the database password: %w", err)
+	}
 
+	// Construct the PostgresSQL connection string
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		c.PostgresUser, password, c.PostgresHost, c.PostgresPort, c.PostgresDB, c.PostgresSSLMode)
+
+	log.Info().
+		Str("host", c.PostgresHost).
+		Str("port", c.PostgresPort).
+		Str("database", c.PostgresDB).
+		Str("user", c.PostgresUser).
+		Str("ssl_mode", c.PostgresSSLMode).
+		Msg("Constructed database URL from individual components")
+
+	return dbURL, nil
 }
 
 func (c *Config) GetDatabasePassword() (string, error) {
