@@ -12,6 +12,9 @@ import (
 )
 
 type Config struct {
+	// Server Configuration
+	ServerPort string `env:"SERVER_PORT" envDefault:"8080"`
+
 	// Database Configuration
 	PostgresHost         string `env:"POSTGRES_HOST"`
 	PostgresPort         string `env:"POSTGRES_PORT"`
