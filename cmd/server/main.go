@@ -62,10 +62,10 @@ func main() {
 	)
 
 	// Start server
-	log.Info().Str("port", cfg.PostgresPort).Msg("Northwind Service starting")
+	log.Info().Str("port", cfg.ServerPort).Msg("Northwind Service starting")
 
 	server := &http.Server{
-		Addr:         ":" + cfg.PostgresPort,
+		Addr:         ":" + cfg.ServerPort,
 		Handler:      httpHandler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
