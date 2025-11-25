@@ -6,6 +6,7 @@ import (
 	appconfig "northwind-api/internal/config"
 	"northwind-api/internal/repository"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -90,4 +91,56 @@ func (h *Handler) GetCategoryById(w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Int("ID", id).Msg("Successfully retrieved the category")
 	writeJSONResponse(w, http.StatusOK, category)
+}
+
+// Handler to create a new category
+func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	// Struct for request category info
+	var req struct {
+		Name        string `json:"category_name"`
+		Description string `json:"description"`
+	}
+
+	// Decode the json and put into struct
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Error().Err(err).Msg("Invalid JSON in create application request")
+		writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
+		return
+	}
+
+	log.Info().
+		Str("category_name", req.Name).
+		Str("description", req.Description).
+		Msg("Creating category with data")
+
+	if req.Name == "" || req.Description == "" {
+		log.Warn().Str("name", req.Name).Str("description", req.Description).Msg("Missing required fields")
+		writeErrorResponse(w, http.StatusBadRequest, "name and description are required")
+		return
+	}
+
+	catId, err := h.db.CreateNewCategory(req.Name, req.Description)
+	if err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			log.Warn().Str("name", req.Name).Msg("This category already exists")
+			writeErrorResponse(w, http.StatusConflict, err.Error())
+			return
+		}
+		log.Error().Err(err).Str("name", req.Name).Msg("Error creating new category")
+		writeErrorResponse(w, http.StatusInternalServerError, "Failed to create new category")
+		return
+	}
+
+	log.Info().
+		Int("category_id", catId).
+		Str("category_name", req.Name).
+		Str("description", req.Description).
+		Msg("Successfully created new category")
+
+	response := map[string]interface{}{
+		"id":      catId,
+		"message": "Category created successfully",
+	}
+
+	writeJSONResponse(w, http.StatusOK, response)
 }
