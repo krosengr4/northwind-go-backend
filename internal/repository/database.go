@@ -35,7 +35,9 @@ func New(cfg *appconfig.Config) (*DB, error) {
 	return &DB{DB: db}, nil
 }
 
-// /api/categories
+// #region categories
+
+// GET /api/categories
 func (db *DB) GetAllCategories() ([]model.Category, error) {
 	query := "SELECT * FROM categories"
 	rows, err := db.Query(query)
@@ -58,7 +60,7 @@ func (db *DB) GetAllCategories() ([]model.Category, error) {
 	return categories, nil
 }
 
-// api/categories/{categoryID}
+// GET /api/categories/{categoryID}
 func (db *DB) GetCategoryById(id int) (*model.Category, error) {
 	query := "SELECT * FROM categories WHERE category_id = $1"
 
@@ -73,3 +75,41 @@ func (db *DB) GetCategoryById(id int) (*model.Category, error) {
 
 	return &cat, nil
 }
+
+// GET /api/categories/name
+func (db *DB) GetCategoryByName(name string) (*model.Category, error) {
+	query := "SELECT * FROM categories WHERE category_name = $1"
+
+	var cat model.Category
+	err := db.QueryRow(query, name).Scan(&cat.CategoryId, &cat.Name, &cat.Description)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("category not found")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query category: %w", err)
+	}
+
+	return &cat, nil
+}
+
+// POST /api/categories
+func (db *DB) CreateNewCategory(name, description string) (int, error) {
+	query := `
+		INSERT INTO categories (category_id, category_name, description)
+		VALUES (DEFAULT, $1, $2)
+	`
+
+	_, err := db.Exec(query, name, description)
+	if err != nil {
+		return "", fmt.Errorf("failed to create application: %w", err)
+	}
+
+	category, err := db.GetCategoryByName(name)
+	if err != nil {
+		return nil, fmt.Errorf("Failure to get category after created: %w", err)
+	}
+
+	return category.CategoryId, nil
+}
+
+// #endregion
