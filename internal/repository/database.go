@@ -149,4 +149,48 @@ func (db *DB) UpdateCategory(id, name, description string) error {
 	return nil
 }
 
+// todo: DELETE /api/categories/{categoryId}
+// This will not delete the products under the category, but will set their category to null
+func (db *DB) DeleteCategory(id string) error {
+	// Use a transaction for atomicity and proper error handling
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Check if category exists first
+	var exists bool
+	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM categories WHERE category_id = $1)", id).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to check the categories existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("category not found")
+	}
+
+	// Delete the category
+	result, err := tx.Exec("DELETE FROM categories WHERE category_id = $1", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete the category: %w", err)
+	}
+
+	// Verify the deletion actually happened
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("category not found")
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Info().Str("category_id", id).Msg("Successfully deleted category")
+	return nil
+}
+
 // #endregion

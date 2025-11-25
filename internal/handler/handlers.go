@@ -60,6 +60,8 @@ func (h *Handler) GetCategories(w http.ResponseWriter, r *http.Request) {
 	writeJSONResponse(w, http.StatusOK, categories)
 }
 
+// #region Categories
+
 // Handler to get category by its ID
 func (h *Handler) GetCategoryById(w http.ResponseWriter, r *http.Request) {
 	// Extract the ID from the URL path
@@ -151,9 +153,9 @@ func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	// Extract the ID from the URL path
 	vars := mux.Vars(r)
-	idStr := vars["categoryId"]
+	catId := vars["categoryId"]
 
-	log.Info().Str("category_id", idStr).Msg("PUT /api/categories/{ID} - Updating category")
+	log.Info().Str("category_id", catId).Msg("PUT /api/categories/{ID} - Updating category")
 
 	var req struct {
 		Name        string `json:"category_name"`
@@ -161,13 +163,13 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error().Err(err).Str("category_id", idStr).Msg("Invalid JSON in update category request")
+		log.Error().Err(err).Str("category_id", catId).Msg("Invalid JSON in update category request")
 		writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
 		return
 	}
 
 	log.Info().
-		Str("category_id", idStr).
+		Str("category_id", catId).
 		Str("Name", req.Name).
 		Str("Description", req.Description).
 		Msg("Updating category with new data")
@@ -181,19 +183,19 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// Update category in the db
-	err := h.db.UpdateCategory(idStr, req.Name, req.Description)
+	err := h.db.UpdateCategory(catId, req.Name, req.Description)
 	if err != nil {
 		if err.Error() == "category not found" {
-			log.Warn().Str("cat_id", idStr).Msg("Category not found for an update")
+			log.Warn().Str("cat_id", catId).Msg("Category not found for an update")
 			writeErrorResponse(w, http.StatusInternalServerError, "Category not found")
 			return
 		}
-		log.Error().Err(err).Str("cat_id", idStr).Msg("Error updating the category")
+		log.Error().Err(err).Str("cat_id", catId).Msg("Error updating the category")
 		writeErrorResponse(w, http.StatusInternalServerError, "Failed to update the category")
 		return
 	}
 
-	log.Info().Str("category_id", idStr).Str("name", req.Name).Msg("Successfully updated the category")
+	log.Info().Str("category_id", catId).Str("name", req.Name).Msg("Successfully updated the category")
 
 	response := map[string]interface{}{
 		"message": "Category was updated successfully",
@@ -201,3 +203,30 @@ func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 
 	writeJSONResponse(w, http.StatusOK, response)
 }
+
+// Handler func for deleting a category
+func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
+	// Extract the ID from the URL path
+	vars := mux.Vars(r)
+	catId := vars["categoryId"]
+
+	// Delete the category
+	err := h.db.DeleteCategory(catId)
+	if err != nil {
+		if err.Error() == "category not found" {
+			writeErrorResponse(w, http.StatusNotFound, "Category not found")
+			return
+		}
+		log.Printf("Error deleting the category: %v", err)
+		writeErrorResponse(w, http.StatusInternalServerError, "Failed to delete the category")
+		return
+	}
+
+	response := map[string]interface{}{
+		"message": "Category was successfully deleted",
+	}
+
+	writeJSONResponse(w, http.StatusOK, response)
+}
+
+// #endregion
