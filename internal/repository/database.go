@@ -6,6 +6,7 @@ import (
 	appconfig "northwind-api/internal/config"
 	"northwind-api/internal/model"
 
+	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 )
 
