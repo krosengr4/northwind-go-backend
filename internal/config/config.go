@@ -2,7 +2,9 @@ package appconfig
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/caarlos0/env"
 	"github.com/joho/godotenv"
@@ -80,4 +82,43 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// Constructs the database URL from individual components (No Fallbacks)
+func (c *Config) GetDatabaseURL() (string, error) {
+
+}
+
+func (c *Config) GetDatabasePassword() (string, error) {
+	// Always require password file
+	if c.PostgresPasswordFile == "" {
+		return "", fmt.Errorf("POSTGRES_PASSWORD_FILE is required - could not find POSTGRES_PASSWORD_FILE")
+	}
+
+	filePath := c.PostgresPasswordFile
+
+	// If file path is not absolute and secrets path is set, use SECRETS_PATH as base directory
+	if !filepath.IsAbs(filePath) && c.SecretsPath != "" {
+		filePath = filepath.Join(c.SecretsPath, filePath)
+		log.Debug().
+			Str("relative_path", c.PostgresPasswordFile).
+			Str("secrets_path", c.SecretsPath).
+			Str("full_path", filePath).
+			Msg("Using relative path with SECRETS_PATH")
+	} else if !filepath.IsAbs(filePath) && c.SecretsPath == "" {
+		return "", fmt.Errorf("relative path provided for POSTGRES_PASSWORD_FILE but SECRETS_PATH is not set")
+	}
+
+	passwordBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read database password from file %s: %w", filePath, err)
+	}
+	password := string(passwordBytes)
+	// Remove any white space / new lines
+	password = strings.TrimSpace(password)
+	log.Info().
+		Str("password_file", filePath).
+		Msg("Using POSTGRES_PASSWORD from file")
+
+	return password, nil
 }
