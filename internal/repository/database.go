@@ -59,7 +59,7 @@ func (db *DB) GetAllCategories() ([]model.Category, error) {
 }
 
 // api/categories/{categoryID}
-func (db *DB) GetCategoryById(id string) (*model.Category, error) {
+func (db *DB) GetCategoryById(id int) (*model.Category, error) {
 	query := "SELECT * FROM categories WHERE category_id = $1"
 
 	var cat model.Category
