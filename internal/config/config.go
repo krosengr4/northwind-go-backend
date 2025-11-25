@@ -25,6 +25,9 @@ type Config struct {
 	LogLevel  string `env:"LOG_LEVEL"`
 	LogFormat string `env:"LOG_FORMAT"`
 
+	// Allowed Origins
+	AllowedOrigins string `env:"ALLOWED_ORIGINS"`
+
 	// Secrets Configuration
 	SecretsPath string `env:"SECRETS_PATH"`
 }
@@ -139,4 +142,24 @@ func (c *Config) GetDatabasePassword() (string, error) {
 		Msg("Using POSTGRES_PASSWORD from file")
 
 	return password, nil
+}
+
+// GetAllowedOrigins returns the list of allowed CORS origins
+func (c *Config) GetAllowedOrigins() []string {
+	if c.AllowedOrigins == "" {
+		// Default to localhost for development
+		return []string{"http://localhost:3000"}
+	}
+
+	// Split comma-separated origins and trim whitespace
+	origins := strings.Split(c.AllowedOrigins, ",")
+	result := make([]string, 0, len(origins))
+	for _, origin := range origins {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
 }
