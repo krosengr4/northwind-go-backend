@@ -35,6 +35,7 @@ func New(cfg *appconfig.Config) (*DB, error) {
 	return &DB{DB: db}, nil
 }
 
+// /api/categories
 func (db *DB) GetAllCategories() ([]model.Category, error) {
 	query := "SELECT * FROM categories"
 	rows, err := db.Query(query)
@@ -55,4 +56,20 @@ func (db *DB) GetAllCategories() ([]model.Category, error) {
 	}
 
 	return categories, nil
+}
+
+// api/categories/{categoryID}
+func (db *DB) GetCategoryById(id int) (*model.Category, error) {
+	query := "SELECT * FROM categories WHERE category_id = $1"
+
+	var cat model.Category
+	err := db.QueryRow(query, id).Scan(&cat.CategoryId, &cat.Name, &cat.Description)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("category not found")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query category: %w", err)
+	}
+
+	return &cat, nil
 }
