@@ -5,6 +5,7 @@ import (
 	"net/http"
 	appconfig "northwind-api/internal/config"
 	"northwind-api/internal/repository"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
@@ -64,12 +65,21 @@ func (h *Handler) GetCategoryById(w http.ResponseWriter, r *http.Request) {
 
 	// Extract the ID from the URL path
 	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr := vars["categoryId"]
 
-	category, err := h.db.GetCategoryById(idStr)
+	// Convert string to an int
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		log.Warn().Str("id", idStr).Msg("Invalid category ID format")
+		writeErrorResponse(w, http.StatusInternalServerError, "Invalid category ID")
+		return
+	}
+
+	// Get category from the database
+	category, err := h.db.GetCategoryById(id)
 	if err != nil {
 		if err.Error() == "category not found" {
-			log.Warn().Str("ID", idStr).Msg("Category not found")
+			log.Warn().Int("ID", id).Msg("Category not found")
 			writeErrorResponse(w, http.StatusInternalServerError, "Category not found")
 			return
 		}
@@ -78,6 +88,6 @@ func (h *Handler) GetCategoryById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info().Str("ID", idStr).Msg("Successfully retrieved the category")
+	log.Info().Int("ID", id).Msg("Successfully retrieved the category")
 	writeJSONResponse(w, http.StatusOK, category)
 }
